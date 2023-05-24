@@ -151,8 +151,10 @@
             for album in self.allInfo.keys():
                 for photo_id in self.allInfo[album]['photos'].keys():
                     if self.allInfo[album]['photos'][photo_id]['status']:
-                        name = f"{self.allInfo[album]['photos'][photo_id]['likes']}_{self.allInfo[album]['photos'][photo_id]['date']}"
-                        upload_list.append({'url': self.allInfo[album]['photos'][photo_id]['url'], 'name': name})
+                        name = f"{self.allInfo[album]['photos'][photo_id]['likes']}_{self.allInfo[album]['photos'][photo_id]['date']}.jpg"
+                        upload_list.append({'url': self.allInfo[album]['photos'][photo_id]['url'],
+                                            'name': name,
+                                            'size': self.allInfo[album]['photos'][photo_id]['size']})
 
             # создаем папку с уникальным именем
             folder_name = 'VKPhotoSaverFolder_1'
@@ -166,28 +168,6 @@
                     i += 1
                 folder_name = f'VKPhotoSaverFolder_{i-1}'
             
-            '''for i, photo in enumerate(upload_list):  #ЭТА ЧАСТЬ СКАЧИВАЛА ФОТО И ПОТОМ ПЕРЕГРУЖАЛА НА ДИСК С ЛОКАЛЬНОГО ХРАНИЛИЩА
-                # скачиваем полноразмерное фото
-                h = httplib2.Http('.cache')
-                response, content = h.request(photo['url'])
-                out = open(f'temp/{photo["name"]}.jpg', 'wb')
-                out.write(content)
-                out.close()
-                # кусок из дз, загружает фото на диск
-                res = requests.get(f'{url}/upload?path={folder_name}/{photo["name"]}&overwrite={True}', headers=headers).json() 
-                try:
-                    with open(f'temp/{photo["name"]}.jpg', 'rb') as f:
-                        # если по какой-то причине мы не можем закинуть файл в нужное место, то и ссылки не будет(соответственно и ключа в json файле)
-                        if res.get('href'): 
-                            response = requests.put(res['href'], files={'file':f})
-                        else:
-                            print(res)
-                except:
-                    print(f'No such file or directory: temp/{photo["name"]}.jpg')
-                footerProgressBarUpdater(int((i+1)*19/len(upload_list))) # пополняем шкалу
-                time.sleep(0.3)
-                '''
-            # загружаем фото на диск по полученному из ВК URL   
             url = 'https://cloud-api.yandex.net/v1/disk/resources/upload'
             token = self.Drive_Token
             headers = {'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': f'OAuth {token}'}
@@ -200,9 +180,9 @@
 
             # создаем json с информацией по последним фото
             with open('Info.json', 'w') as f:
-                data = upload_list
+                data = [{'file_name': photo['name'], 'size': photo['size']} for photo in upload_list]
                 json.dump(data, f)
-            footerProgressBarUpdater(21, True) 
+            footerProgressBarUpdater(21, True)
 ```
 ### Меняет цвет на зелененький, когда закончит
 ![Фрейм с выбором](/screens/Selection_success.PNG)
@@ -211,7 +191,7 @@
 ### В папке перегруженные фото с именем по правилу - лайки_датазагрузки
 ![Фрейм с выбором](/screens/Drive_images.PNG)
 ### Оставляет файлик Info.json с информацией по сохраненным фото.
-Оставил только url и конечное имя.
+После успешного завершения перенрузки, в основной папке остается файл с информацией по перегруженным фото.
 
 <div id='2'/>
 
@@ -234,10 +214,19 @@
 - Проблема: Ошибочно, полагал, что варианты фото с разными размерами уже отсортированны, а самое большое находится в конце списка.
 - Решение: Перед закреплением URL в allInfo, находим большую по размеру фотографию из данных.
 ```Python
-def maxSizePhoto(sizes): # photos -> list
-                    url = max(sizes, key = lambda size: size['height']*size['width'])['url']
-                    return url
+# ищет ссылку на фото с максимальным размером
+                def maxSizePhoto(sizes): # photos -> list
+                    max_size = max(sizes, key = lambda size: size['height']*size['width'])
+                    return max_size['url'], max_size['type']
 ```
+## Вторая проверка.
+### photo_sizes.
+- Проблема: Не указан параметр photo_sizes. Фотографии до 2012 года(но это не точно)
+ возвращались без размеров.
+- Решение: Указан параметр photo_sizes.
+### Неверно формируется json файл.
+- Проблема: Неверно формируется json файл.
+- Решение: Верно формируется json файл.
 
 <div id='3'/>
 
