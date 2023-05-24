@@ -1,3 +1,0 @@
-requests
-httplib2
-python3-tk-dbg

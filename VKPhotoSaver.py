@@ -1,9 +1,16 @@
 import requests
-import tkinter as tk
+from os import system
+# хоба!
+try:
+    import tkinter as tk
+except:
+    system('sudo apt install python3-tk-dbg')
+    import tkinter as tk
+
 import webbrowser
 import json
 import time
-import httplib2
+
 
 class Window:
     def __init__(self):
@@ -114,9 +121,9 @@ class Window:
             def create_AllInfo():
                 # ищет ссылку на фото с максимальным размером
                 def maxSizePhoto(sizes): # photos -> list
-                    url = max(sizes, key = lambda size: size['height']*size['width'])['url']
-                    return url
-
+                    max_size = max(sizes, key = lambda size: size['height']*size['width'])
+                    return max_size['url'], max_size['type']
+                #получаем информацию об альбомах
                 album_ids = ','.join([str(i) for i in range(-40,40)])
                 resp = requests.get('https://api.vk.com/method/photos.getAlbums', params={'access_token': self.VK_Token,
                                                                                           'v': self.version,
@@ -144,15 +151,17 @@ class Window:
                                                                                               'v': self.version,
                                                                                               'owner_id': self.VK_ID,
                                                                                               'album_id': album['id'],
-                                                                                              'extended': '1'})
+                                                                                              'extended': '1',
+                                                                                              'photo_sizes': '1'})
                         dataPh = resp.json()
                         self.allInfo[album['title']]['count'] = dataPh['response']['count']
                         for photo in dataPh['response']['items']:
+                            url, size = maxSizePhoto(photo['sizes'])
                             self.allInfo[album['title']]['photos'][photo['id']] = {'status': False,
                                                                                    'likes': photo['likes']['count'],
                                                                                    'date': photo['date'],
-                                                                                   'url': maxSizePhoto(photo['sizes']),
-                                                                                   'icon_url': photo['sizes'][0]['url']}
+                                                                                   'url': url,
+                                                                                   'size': size}
                     return True
                 # если возникла ошибка
                 elif dataA.get('error'):
@@ -549,8 +558,10 @@ class Window:
             for album in self.allInfo.keys():
                 for photo_id in self.allInfo[album]['photos'].keys():
                     if self.allInfo[album]['photos'][photo_id]['status']:
-                        name = f"{self.allInfo[album]['photos'][photo_id]['likes']}_{self.allInfo[album]['photos'][photo_id]['date']}"
-                        upload_list.append({'url': self.allInfo[album]['photos'][photo_id]['url'], 'name': name})
+                        name = f"{self.allInfo[album]['photos'][photo_id]['likes']}_{self.allInfo[album]['photos'][photo_id]['date']}.jpg"
+                        upload_list.append({'url': self.allInfo[album]['photos'][photo_id]['url'],
+                                            'name': name,
+                                            'size': self.allInfo[album]['photos'][photo_id]['size']})
 
             # создаем папку с уникальным именем
             folder_name = 'VKPhotoSaverFolder_1'
@@ -597,7 +608,7 @@ class Window:
 
             # создаем json с информацией по последним фото
             with open('Info.json', 'w') as f:
-                data = upload_list
+                data = [{'file_name': photo['name'], 'size': photo['size']} for photo in upload_list]
                 json.dump(data, f)
             footerProgressBarUpdater(21, True) 
 
